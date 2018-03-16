@@ -1,0 +1,208 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+    <style>
+        #stage {
+            width: 400px;
+            height: 600px;
+            background-color: rgb(0, 0, 0);
+            border: 2px red solid;
+            position: relative;
+            margin: 0 auto;
+        }
+
+        #stop {
+            width: 400px;
+            height: 600px;
+            position: absolute;
+        }
+
+        #ball {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background-color: yellow;
+            position: absolute;
+        }
+
+        .wall {
+            width: 50px;
+            height: 20px;
+            position: absolute;
+            border-radius: 5px;
+            box-sizing: border-box;
+        }
+
+        #car {
+            position: absolute;
+            bottom: 0;
+            width: 100px;
+            height: 20px;
+            background-color: white;
+        }
+    </style>
+</head>
+<body>
+<div id='stage'>
+    <div id='stop'>
+        <div id='car'></div>
+    </div>
+    <div id='ball'></div>
+</div>
+</body>
+</html>
+<script>
+    var stage = document.getElementById('stage');
+    var car = document.getElementById('car');
+    var progress = null;//控制游戏进程的计时器
+    var wall = new Wall();
+    var ball = new Ball();
+    //初始化砖块  这里可以更具关卡的不同随意更改 ^v^
+    for (var j = 0; j < 5; j++) {
+        for (var i = 0; i < 8; i++) {
+            var newDiv = document.createElement('div');
+            newDiv.className = 'wall';
+            if (j % 3 == 0) {
+                newDiv.style.backgroundColor = 'green';
+            } else if (j % 3 == 1) {
+                newDiv.style.backgroundColor = 'red';
+            } else {
+                newDiv.style.backgroundColor = 'blue';
+            }
+            newDiv.style.left = 50 * i + 'px';
+            newDiv.style.top = 20 * j + 'px';
+            stage.appendChild(newDiv);
+        }
+    }
+
+    //砖块的对象
+    function Wall() {
+        this.location = [];
+        this.wallGroup = document.getElementsByClassName('wall');
+    }
+
+    Wall.prototype.locate = function () {
+        for (var i = 0; i < this.wallGroup.length; i++) {
+            var position = [this.wallGroup[i].offsetLeft, this.wallGroup[i].offsetTop];
+            this.location[i] = position;
+        }
+    };
+    /*舞台的鼠标移动 --开始时球跟着移动*/
+    stage.onmousemove = function (ev) {
+        var ev = ev || window.event;
+        car.style.left = ev.pageX - stage.offsetLeft - Math.round(car.offsetWidth / 2) + 'px';
+        if (car.offsetLeft <= 0) {
+            car.style.left = 0;
+        }
+        if (car.offsetLeft >= 300) {
+            car.style.left = '300px';
+        }
+        //判断小球是否发射了，如果发射了就不跟随鼠标移动
+        if (ball.go == false) {
+            ball.self.style.left = car.offsetLeft + 45 + 'px';
+            ball.self.style.top = '570px';
+        }
+
+    };
+
+    //球对象
+    function Ball() {
+        this.self = document.getElementById('ball');
+        this.go = false; //小球是否发射的状态
+        this.x = 0;
+        this.y = 570;
+        this.a = 1;
+        this.b = -1;
+    }
+
+    Ball.prototype.move = function () {
+        this.x = this.self.offsetLeft;
+        var that = this.self;
+        this.x = this.x + this.a * Math.sin((2 * Math.PI / 360) * 45);
+        this.y = this.y + this.b * Math.cos((2 * Math.PI / 360) * 45);
+        that.style.left = this.x + 'px';
+        that.style.top = this.y + 'px';
+        //小球与砖块的碰撞检测
+        if (this.y < 120) {
+            for (var i = 0; i < wall.wallGroup.length; i++) {
+                var io = this.checkHit(wall.wallGroup[i].offsetLeft, wall.wallGroup[i].offsetTop);
+                if (io != 0) {
+                    wall.wallGroup[i].style.display = 'none';
+                    if (io == 1) {
+                        this.a = -this.a;
+                    }
+                    if (io == 2) {
+                        this.b = -this.b;
+                    }
+                    break;
+                }
+            }
+        }
+        //判断是否接住了小球
+        if (that.offsetLeft <= 0 || that.offsetLeft >= 390) {
+            this.a = -this.a;
+        }
+        if (that.offsetTop <= 0) {
+            this.b = -this.b;
+        }
+        if (that.offsetTop == 570 && that.offsetLeft - car.offsetLeft <= 100 && that.offsetLeft - car.offsetLeft >= 0) {
+            this.b = -this.b;
+        }
+        //判断小球是否出界了
+        if (that.offsetTop > 570) {
+            clearTimeout(progress);
+            alert('you lose!');
+        }else {
+            progress = setTimeout('ball.move()', 5);
+        }
+    };
+    //碰撞检测
+    Ball.prototype.checkHit = function (wallX, wallY) {
+        var b = {
+            x: ball.x,
+            y: ball.y,
+            x1: ball.x + 10,
+            y1: ball.y + 10
+        };
+        var w = {
+            x: wallX,
+            y: wallY,
+            x1: wallX + 50,
+            y1: wallY + 20
+        };
+        var sx;
+        var sy;
+        sx = b.x >= w.x ? b.x : w.x;
+        sy = b.y >= w.y ? b.y : w.y;
+        if (sx >= b.x && sx <= b.x1 && sy >= b.y && sy <= b.y1 && sx >= w.x && sx <= w.x1 && sy >= w.y && sy <= w.y1) {
+            var a1 = Math.abs(b.x - w.x1);
+            var a2 = Math.abs(b.x1 - w.x);
+            var a3 = Math.abs(b.y - w.y1);
+            var a4 = Math.abs(b.y1 - w.y);
+            if (a1 < a2 && a1 < a3 && a1 < a4) {
+                return 1;
+            }
+            if (a2 < a1 && a2 < a3 && a2 < a4) {
+                return 1;
+            }
+            if (a3 < a1 && a3 < a2 && a3 < a4) {
+                return 2;
+            }
+            if (a4 < a2 && a4 < a3 && a4 < a1) {
+                return 2;
+            }
+        } else {
+            return 0;
+        }
+    };
+    //球的发射
+    stage.onclick = function () {
+        wall.locate();
+        ball.move();
+        ball.go = true;
+    }
+</script>
